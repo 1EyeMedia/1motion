@@ -26,51 +26,6 @@
             user-select: none;
         }
 
-        /* Cyber UI Overlay Elements */
-        .cyber-panel {
-            background: rgba(0, 20, 40, 0.6);
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1) inset;
-            backdrop-filter: blur(4px);
-        }
-
-        .cyber-border {
-            position: absolute;
-            width: 15px;
-            height: 15px;
-            border-color: #00f0ff;
-            border-style: solid;
-        }
-        .tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
-        .tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
-        .bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
-        .br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
-
-        /* CRT Scanline Effect */
-        .scanlines {
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0,0,0,0.2) 50%,
-                rgba(0,0,0,0.2)
-            );
-            background-size: 100% 4px;
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            pointer-events: none;
-            z-index: 50;
-        }
-
-        /* Vignette */
-        .vignette {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            box-shadow: 0 0 200px rgba(0,0,0,0.9) inset;
-            pointer-events: none;
-            z-index: 40;
-        }
-
         /* Video Filter (Night Vision / Tech look) */
         video {
             filter: grayscale(80%) contrast(120%) brightness(80%) sepia(50%) hue-rotate(180deg);
@@ -99,32 +54,6 @@
             50% { text-shadow: 0 0 2px #00f0ff; }
         }
         .text-glow { animation: pulse-glow 2s infinite; }
-
-        /* Reticle */
-        .reticle-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            border: 1px solid rgba(0, 240, 255, 0.4);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 30;
-            transition: opacity 0.5s ease;
-        }
-        .reticle-center::before, .reticle-center::after {
-            content: '';
-            position: absolute;
-            background: rgba(0, 240, 255, 0.6);
-        }
-        .reticle-center::before { top: 50%; left: -10px; right: -10px; height: 1px; transform: translateY(-50%); }
-        .reticle-center::after { left: 50%; top: -10px; bottom: -10px; width: 1px; transform: translateX(-50%); }
-
-        .scanlines, .vignette {
-            transition: opacity 0.5s ease;
-        }
 
         /* Loader */
         #loader {
@@ -155,114 +84,9 @@
     </div>
 
     <!-- Mode Toggle Button -->
-    <button id="mode-btn" class="absolute bottom-6 right-6 z-50 cyber-panel px-4 py-2 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-colors border border-[#00f0ff] cursor-pointer font-bold tracking-widest text-xs pointer-events-auto shadow-[0_0_10px_rgba(0,240,255,0.3)]">
-        INITIATE KINEMATIC CANVAS
+    <button id="mode-btn" class="absolute bottom-6 right-6 z-50 bg-[#001428]/80 backdrop-blur px-4 py-2 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-colors border border-[#00f0ff] cursor-pointer font-bold tracking-widest text-xs pointer-events-auto shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+        SWITCH TO SKELETON MODEL
     </button>
-
-    <!-- UI Overlay Elements -->
-    <div id="ui-overlay" class="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between transition-opacity duration-500">
-        
-        <!-- Top Bar -->
-        <div class="flex justify-between items-start">
-            <div class="cyber-panel p-3 relative w-64">
-                <div class="cyber-border tl"></div><div class="cyber-border tr"></div>
-                <div class="cyber-border bl"></div><div class="cyber-border br"></div>
-                <div class="text-xs text-[#00f0ff] opacity-80 mb-1">SYS.STATUS</div>
-                <div class="flex items-center gap-2">
-                    <div class="w-3 h-3 bg-red-500 rounded-full animate-blink"></div>
-                    <div class="font-bold tracking-widest">REC / ACTIVE</div>
-                </div>
-                <div class="text-[10px] mt-2 opacity-60">LINK: ENCRYPTED 2048-BIT RSA</div>
-            </div>
-
-            <div class="text-center text-glow">
-                <h1 class="text-2xl font-bold tracking-[0.2em]">INTEL_SYS v9.4.2</h1>
-                <div class="text-xs opacity-70 tracking-widest mt-1">FACIAL TOPOLOGY SCANNER</div>
-            </div>
-
-            <div class="cyber-panel p-3 relative w-64 text-right">
-                <div class="cyber-border tl"></div><div class="cyber-border tr"></div>
-                <div class="cyber-border bl"></div><div class="cyber-border br"></div>
-                <div class="text-xs text-[#00f0ff] opacity-80 mb-1">COORDINATES</div>
-                <div id="ui-latlng" class="font-bold">38° 53′ 52″ N, 77° 2′ 11″ W</div>
-                <div class="text-[10px] mt-2 opacity-60">SAT_LINK: ONLINE</div>
-            </div>
-        </div>
-
-        <!-- Middle Section (Side Panels) -->
-        <div class="flex justify-between items-center h-full my-4">
-            <!-- Left Panel -->
-            <div class="cyber-panel p-4 relative w-56 h-auto">
-                <div class="cyber-border tl"></div><div class="cyber-border bl"></div>
-                <h3 class="border-b border-[#00f0ff]/30 pb-1 mb-3 text-sm tracking-wider">TARGET BIOMETRICS</h3>
-                
-                <div class="space-y-3 text-xs">
-                    <div>
-                        <div class="opacity-60">STATUS</div>
-                        <div id="ui-status" class="text-yellow-400 font-bold">SCANNING...</div>
-                    </div>
-                    <div>
-                        <div class="opacity-60">MATCH PROBABILITY</div>
-                        <div class="flex items-center gap-2">
-                            <div class="flex-1 bg-gray-800 h-2"><div id="ui-match-bar" class="bg-[#00f0ff] h-full w-0 transition-all"></div></div>
-                            <span id="ui-match-val">0%</span>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="opacity-60">HEART RATE (EST)</div>
-                        <div id="ui-hr" class="text-lg">-- BPM</div>
-                    </div>
-                    <div>
-                        <div class="opacity-60">FACIAL SYMMETRY</div>
-                        <div id="ui-sym">--</div>
-                    </div>
-                    <div>
-                        <div class="opacity-60">THREAT LEVEL</div>
-                        <div id="ui-threat" class="text-green-400">UNDETERMINED</div>
-                    </div>
-                    <div>
-                        <div class="opacity-60">EXTREMITIES TRK</div>
-                        <div id="ui-hands" class="text-gray-500">NONE</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Panel (Data Stream) -->
-            <div class="cyber-panel p-4 relative w-56 h-64 overflow-hidden flex flex-col">
-                <div class="cyber-border tr"></div><div class="cyber-border br"></div>
-                <h3 class="border-b border-[#00f0ff]/30 pb-1 mb-2 text-sm tracking-wider">LIVE DATA STREAM</h3>
-                <div id="data-stream" class="flex-1 overflow-hidden text-[9px] leading-tight space-y-1 opacity-70 flex flex-col justify-end">
-                    <!-- Logs will be injected here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Bar -->
-        <div class="flex justify-center items-end">
-            <div class="cyber-panel p-2 px-6 relative flex gap-8">
-                <div class="cyber-border tl"></div><div class="cyber-border tr"></div>
-                <div class="cyber-border bl"></div><div class="cyber-border br"></div>
-                <div class="text-center">
-                    <div class="text-[10px] opacity-60">PITCH</div>
-                    <div id="ui-pitch" class="font-bold">0.00</div>
-                </div>
-                <div class="text-center border-l border-[#00f0ff]/30 pl-8">
-                    <div class="text-[10px] opacity-60">YAW</div>
-                    <div id="ui-yaw" class="font-bold">0.00</div>
-                </div>
-                <div class="text-center border-l border-[#00f0ff]/30 pl-8">
-                    <div class="text-[10px] opacity-60">ROLL</div>
-                    <div id="ui-roll" class="font-bold">0.00</div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Aesthetic Overlays -->
-    <div class="reticle-center"></div>
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
 
     <script>
         // DOM Elements
@@ -271,19 +95,6 @@
         const canvasCtx = canvasElement.getContext('2d');
         const loader = document.getElementById('loader');
         const loadingBar = document.getElementById('loading-bar');
-        const dataStream = document.getElementById('data-stream');
-
-        // UI Elements for Data
-        const uiStatus = document.getElementById('ui-status');
-        const uiMatchBar = document.getElementById('ui-match-bar');
-        const uiMatchVal = document.getElementById('ui-match-val');
-        const uiHr = document.getElementById('ui-hr');
-        const uiSym = document.getElementById('ui-sym');
-        const uiThreat = document.getElementById('ui-threat');
-        const uiHands = document.getElementById('ui-hands');
-        const uiPitch = document.getElementById('ui-pitch');
-        const uiYaw = document.getElementById('ui-yaw');
-        const uiRoll = document.getElementById('ui-roll');
 
         // State variables
         let isLoaded = false;
@@ -291,36 +102,63 @@
         let activeFaces = [];
         let activeHands = [];
         let activePose = null;
-        let activeSegmentation = null;
-        let activeImage = null;
-        let displayMode = 'tactical'; // 'tactical' or 'kinematic'
+        let displayMode = 'human'; // Defaults to 'human' or 'skeleton'
 
         // Load Brand Logo
         const brandLogo = new Image();
         brandLogo.src = 'https://i.ibb.co/rfs2sDK5/Whats-App-Image-2026-02-12-at-11-40-19-PM-removebg-preview.png';
 
-        // --- Utility: Add fake data to stream ---
-        function addLog(msg) {
-            const div = document.createElement('div');
-            const time = new Date().toISOString().substring(11, 23);
-            div.innerHTML = `<span class="text-[#00f0ff]/50">[${time}]</span> ${msg}`;
-            dataStream.appendChild(div);
-            if (dataStream.children.length > 15) {
-                dataStream.removeChild(dataStream.firstChild);
-            }
+        // ==========================================
+        // --- EXTERNAL HUMAN IMAGE RIGGING ASSETS ---
+        // Replace these .src strings with URLs to your own transparent PNGs!
+        // E.g., humanTorsoImg.src = 'https://i.imgur.com/your-shirt.png';
+        // ==========================================
+        function createSvgDataUri(svgString) {
+            return 'data:image/svg+xml;base64,' + btoa(svgString);
         }
 
-        // --- Simulated Data Updates ---
-        setInterval(() => {
-            if (!isLoaded) return;
-            // Fake GPS slight drift
-            document.getElementById('ui-latlng').innerText = 
-                `38° 53′ ${50 + Math.floor(Math.random()*4)}″ N, 77° 2′ ${10 + Math.floor(Math.random()*4)}″ W`;
-            
-            // Random stream data
-            const hexCodes = Array.from({length: 4}, () => Math.floor(Math.random()*16777215).toString(16).toUpperCase().padStart(6, '0')).join(' ');
-            addLog(`0x${hexCodes} ... OK`);
-        }, 800);
+        // T-Shirt / Torso
+        const humanTorsoImg = new Image();
+        humanTorsoImg.src = createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 300">
+            <path d="M 40,20 Q 100,-10 160,20 L 190,100 L 160,300 L 40,300 L 10,100 Z" fill="#3b82f6" stroke="#1e3a8a" stroke-width="6"/>
+            <path d="M 70,20 Q 100,60 130,20" fill="#fbcfb5" stroke="#1e3a8a" stroke-width="4"/> <!-- Neck cutout -->
+        </svg>`);
+
+        // Upper Arm (Sleeves)
+        const humanUpperArmImg = new Image(); 
+        humanUpperArmImg.src = createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 300">
+            <rect x="20" y="0" width="60" height="300" rx="30" fill="#3b82f6" stroke="#1e3a8a" stroke-width="5"/>
+        </svg>`);
+
+        // Lower Arm (Skin / Fleshy)
+        const humanLowerArmImg = new Image(); 
+        humanLowerArmImg.src = createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 300">
+            <path d="M 30,0 L 70,0 Q 80,150 65,300 L 35,300 Q 20,150 30,0 Z" fill="#fbcfb5" stroke="#d99f81" stroke-width="4"/>
+        </svg>`);
+
+        // Upper Leg (Pants)
+        const humanUpperLegImg = new Image();
+        humanUpperLegImg.src = createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 300">
+            <rect x="15" y="0" width="70" height="300" rx="20" fill="#1f2937" stroke="#111827" stroke-width="5"/>
+        </svg>`);
+
+        // Lower Leg (Pants + Shoes)
+        const humanLowerLegImg = new Image();
+        humanLowerLegImg.src = createSvgDataUri(`
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 300">
+            <path d="M 25,0 L 75,0 L 65,240 L 35,240 Z" fill="#1f2937" stroke="#111827" stroke-width="5"/>
+            <!-- Shoe -->
+            <path d="M 35,240 L 65,240 L 80,300 L 10,300 Z" fill="#dc2626" stroke="#991b1b" stroke-width="5"/>
+        </svg>`);
+
+        // --- Utility: Console Logging ---
+        function addLog(msg) {
+            console.log(`[SYS] ${msg}`);
+        }
 
         // --- Resize Handler ---
         function resizeCanvas() {
@@ -330,48 +168,32 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // --- Drawing custom bounding box ---
-        function drawCyberBox(ctx, minX, minY, maxX, maxY, boxColor = '#00f0ff', label = 'UNKNOWN_SUBJ') {
-            const width = maxX - minX;
-            const height = maxY - minY;
-            const size = Math.min(width, height) * 0.15; // Corner size
-            
-            ctx.strokeStyle = boxColor;
-            ctx.lineWidth = 2;
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = boxColor;
+        // --- 2D Image Rigging Engine ---
+        // Dynamically stretches and rotates an external image to connect two tracking joints
+        function drawRiggedImage(ctx, img, p1, p2, widthScale) {
+            if (!p1 || !p2 || !img.complete || img.naturalWidth === 0) return;
+            const x1 = p1.x * canvasElement.width;
+            const y1 = p1.y * canvasElement.height;
+            const x2 = p2.x * canvasElement.width;
+            const y2 = p2.y * canvasElement.height;
 
-            ctx.beginPath();
-            // Top Left
-            ctx.moveTo(minX, minY + size); ctx.lineTo(minX, minY); ctx.lineTo(minX + size, minY);
-            // Top Right
-            ctx.moveTo(maxX - size, minY); ctx.lineTo(maxX, minY); ctx.lineTo(maxX, minY + size);
-            // Bottom Right
-            ctx.moveTo(maxX, maxY - size); ctx.lineTo(maxX, maxY); ctx.lineTo(maxX - size, maxY);
-            // Bottom Left
-            ctx.moveTo(minX + size, maxY); ctx.lineTo(minX, maxY); ctx.lineTo(minX, maxY - size);
-            ctx.stroke();
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
 
-            // Reset shadow
-            ctx.shadowBlur = 0;
+            ctx.save();
+            ctx.translate(x1, y1);
+            // Rotate so the image points from joint 1 down to joint 2
+            ctx.rotate(angle - Math.PI/2);
 
-            // Draw Crosshairs on center
-            const cx = minX + width/2;
-            const cy = minY + height/2;
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-            ctx.beginPath();
-            ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
-            ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
-            ctx.stroke();
-            
-            // Draw Target Info
-            ctx.fillStyle = boxColor;
-            ctx.font = '10px "Share Tech Mono"';
-            ctx.fillText(`ID: ${label}_${frameCount % 1000}`, minX, minY - 10);
+            const width = distance * widthScale;
+            // Draw image centered on the bone line, stretching from y=0 to y=distance
+            ctx.drawImage(img, -width / 2, 0, width, distance);
+            ctx.restore();
         }
 
         // --- Animated Vector Rig Tool ---
-        // Draws filled polygons to create a solid "Animated Avatar" look
         function drawRiggedPolygon(ctx, landmarks, connections, fillColor, strokeColor, lineWidth) {
             if (!landmarks || !connections) return;
             ctx.beginPath();
@@ -394,7 +216,6 @@
         }
 
         // --- Procedural Cartoon Bone Generator ---
-        // Dynamically creates perfect 2D vector "cartoon bones" between any two tracking points
         function drawCartoonBone(ctx, p1, p2, thickness) {
             if (!p1 || !p2) return;
             const x1 = p1.x * canvasElement.width;
@@ -406,13 +227,11 @@
             const dy = y2 - y1;
             const angle = Math.atan2(dy, dx);
             
-            // 1. Draw thick black outline
             ctx.strokeStyle = '#1f2937';
             ctx.lineWidth = thickness + 8;
             ctx.lineCap = 'round';
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             
-            // Draw Outline Knobs (the classic double-bump on bones)
             ctx.fillStyle = '#1f2937';
             const kOffset = thickness * 0.35;
             const cos = Math.cos(angle + Math.PI/2) * kOffset;
@@ -423,12 +242,10 @@
             ctx.beginPath(); ctx.arc(x2 + cos, y2 + sin, knobRadius, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(x2 - cos, y2 - sin, knobRadius, 0, Math.PI*2); ctx.fill();
 
-            // 2. Draw inner white bone
             ctx.strokeStyle = '#f8fafc';
             ctx.lineWidth = thickness;
             ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
             
-            // Draw Inner Knobs
             ctx.fillStyle = '#f8fafc';
             const innerRadius = thickness/2;
             ctx.beginPath(); ctx.arc(x1 + cos, y1 + sin, innerRadius, 0, Math.PI*2); ctx.fill();
@@ -439,20 +256,14 @@
 
         // --- Mode Toggle Logic ---
         const modeBtn = document.getElementById('mode-btn');
-        const uiOverlay = document.getElementById('ui-overlay');
         
         modeBtn.addEventListener('click', () => {
-            const aesthetics = document.querySelectorAll('.scanlines, .vignette, .reticle-center');
-            if (displayMode === 'tactical') {
-                displayMode = 'kinematic';
-                modeBtn.innerText = 'RETURN TO TACTICAL SYS';
-                uiOverlay.style.opacity = '0';
-                aesthetics.forEach(el => el.style.opacity = '0');
+            if (displayMode === 'human') {
+                displayMode = 'skeleton';
+                modeBtn.innerText = 'SWITCH TO HUMAN MODEL';
             } else {
-                displayMode = 'tactical';
-                modeBtn.innerText = 'INITIATE KINEMATIC CANVAS';
-                uiOverlay.style.opacity = '1';
-                aesthetics.forEach(el => el.style.opacity = '1');
+                displayMode = 'human';
+                modeBtn.innerText = 'SWITCH TO SKELETON MODEL';
             }
         });
 
@@ -480,286 +291,211 @@
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-            if (displayMode === 'kinematic') {
-                // --- ANIMATED 2D SKELETON AVATAR MODE ---
-                
-                // 1. Draw solid Blueprint / Studio Background
-                canvasCtx.fillStyle = '#050a0f'; // Deep cyber black background
-                canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
-                
-                // Draw a subtle glowing tech grid
-                canvasCtx.strokeStyle = 'rgba(0, 240, 255, 0.1)'; // Faint cyan grid
-                canvasCtx.lineWidth = 1;
-                for(let i=0; i<canvasElement.width; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(i,0); canvasCtx.lineTo(i,canvasElement.height); canvasCtx.stroke(); }
-                for(let i=0; i<canvasElement.height; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(0,i); canvasCtx.lineTo(canvasElement.width,i); canvasCtx.stroke(); }
+            // 1. Draw solid Blueprint / Studio Background
+            canvasCtx.fillStyle = '#050a0f'; // Deep cyber black background
+            canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // Draw a subtle glowing tech grid
+            canvasCtx.strokeStyle = 'rgba(0, 240, 255, 0.1)'; // Faint cyan grid
+            canvasCtx.lineWidth = 1;
+            for(let i=0; i<canvasElement.width; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(i,0); canvasCtx.lineTo(i,canvasElement.height); canvasCtx.stroke(); }
+            for(let i=0; i<canvasElement.height; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(0,i); canvasCtx.lineTo(canvasElement.width,i); canvasCtx.stroke(); }
 
-                // Draw Brand Logo (Top Left)
-                if (brandLogo.complete && brandLogo.naturalWidth > 0) {
-                    canvasCtx.save();
-                    const logoWidth = 150; 
-                    const logoHeight = (brandLogo.naturalHeight / brandLogo.naturalWidth) * logoWidth;
-                    
-                    // Un-mirror the canvas specifically for the logo so it isn't drawn backwards
-                    // This cancels out the CSS scaleX(-1) mirror effect applied to the whole canvas
-                    canvasCtx.translate(canvasElement.width, 0);
-                    canvasCtx.scale(-1, 1);
-                    
-                    // Add a neon cyan glow for the dark background
-                    canvasCtx.shadowColor = 'rgba(0, 240, 255, 0.5)';
-                    canvasCtx.shadowBlur = 15;
-                    canvasCtx.shadowOffsetY = 0;
-                    
-                    // Draw at standard top-left coordinates (30, 30)
-                    canvasCtx.drawImage(brandLogo, 30, 30, logoWidth, logoHeight);
-                    canvasCtx.restore();
-                }
+            // Draw Brand Logo (Top Left)
+            if (brandLogo.complete && brandLogo.naturalWidth > 0) {
+                canvasCtx.save();
+                const logoWidth = 150; 
+                const logoHeight = (brandLogo.naturalHeight / brandLogo.naturalWidth) * logoWidth;
+                
+                // Un-mirror the canvas specifically for the logo so it isn't drawn backwards
+                canvasCtx.translate(canvasElement.width, 0);
+                canvasCtx.scale(-1, 1);
+                
+                // Add a neon cyan glow for the dark background
+                canvasCtx.shadowColor = 'rgba(0, 240, 255, 0.5)';
+                canvasCtx.shadowBlur = 15;
+                canvasCtx.shadowOffsetY = 0;
+                
+                // Draw at standard top-left coordinates
+                canvasCtx.drawImage(brandLogo, 30, 30, logoWidth, logoHeight);
+                canvasCtx.restore();
+            }
 
-                // 2. Draw Vector Cartoon Skeleton Body
-                if (activePose && activePose.length > 28) {
-                    const p = activePose;
-                    
-                    // Draw Spine / Ribcage
-                    const midShoulder = { x: (p[11].x + p[12].x)/2, y: (p[11].y + p[12].y)/2 };
-                    const midHip = { x: (p[23].x + p[24].x)/2, y: (p[23].y + p[24].y)/2 };
-                    drawCartoonBone(canvasCtx, midShoulder, midHip, 35); // Spine
-                    
-                    // Draw Neck
-                    let neckTop = p[0]; // fallback to pose nose
-                    if (activeFaces.length > 0) neckTop = activeFaces[0][152]; // Connect to bottom chin of face mesh
-                    drawCartoonBone(canvasCtx, midShoulder, neckTop, 20); // Neck
-                    
-                    // Draw horizontal Ribs
-                    for (let i = 0.2; i <= 0.8; i += 0.2) {
-                        const spineX = midShoulder.x + (midHip.x - midShoulder.x) * i;
-                        const spineY = midShoulder.y + (midHip.y - midShoulder.y) * i;
-                        const width = Math.abs(p[11].x - p[12].x) * (1.2 - i*0.4); 
-                        const rL = {x: spineX - width/2, y: spineY};
-                        const rR = {x: spineX + width/2, y: spineY};
-                        drawCartoonBone(canvasCtx, rL, rR, 15);
+            if (displayMode === 'skeleton') {
+                // ==========================================
+                // SKELETON MODE RENDERING
+                // ==========================================
+                    // SKELETON MODE RENDERING
+                    // ==========================================
+                    if (activePose && activePose.length > 28) {
+                        const p = activePose;
+                        const midShoulder = { x: (p[11].x + p[12].x)/2, y: (p[11].y + p[12].y)/2 };
+                        const midHip = { x: (p[23].x + p[24].x)/2, y: (p[23].y + p[24].y)/2 };
+                        
+                        drawCartoonBone(canvasCtx, midShoulder, midHip, 35); // Spine
+                        let neckTop = p[0]; 
+                        if (activeFaces.length > 0) neckTop = activeFaces[0][152]; 
+                        drawCartoonBone(canvasCtx, midShoulder, neckTop, 20); // Neck
+                        
+                        // Ribs
+                        for (let i = 0.2; i <= 0.8; i += 0.2) {
+                            const spineX = midShoulder.x + (midHip.x - midShoulder.x) * i;
+                            const spineY = midShoulder.y + (midHip.y - midShoulder.y) * i;
+                            const width = Math.abs(p[11].x - p[12].x) * (1.2 - i*0.4); 
+                            const rL = {x: spineX - width/2, y: spineY};
+                            const rR = {x: spineX + width/2, y: spineY};
+                            drawCartoonBone(canvasCtx, rL, rR, 15);
+                        }
+                        drawCartoonBone(canvasCtx, p[23], p[24], 25); // Hips
+                        drawCartoonBone(canvasCtx, p[11], p[12], 25); // Shoulders
+                        
+                        drawCartoonBone(canvasCtx, p[11], p[13], 20); // L Upper Arm
+                        drawCartoonBone(canvasCtx, p[13], p[15], 16); // L Lower Arm
+                        drawCartoonBone(canvasCtx, p[12], p[14], 20); // R Upper Arm
+                        drawCartoonBone(canvasCtx, p[14], p[16], 16); // R Lower Arm
+                        
+                        drawCartoonBone(canvasCtx, p[23], p[25], 24); // L Upper Leg
+                        drawCartoonBone(canvasCtx, p[25], p[27], 20); // L Lower Leg
+                        drawCartoonBone(canvasCtx, p[24], p[26], 24); // R Upper Leg
+                        drawCartoonBone(canvasCtx, p[26], p[28], 20); // R Lower Leg
                     }
-
-                    // Hips
-                    drawCartoonBone(canvasCtx, p[23], p[24], 25);
-                    // Shoulders
-                    drawCartoonBone(canvasCtx, p[11], p[12], 25);
                     
-                    // Arms
-                    drawCartoonBone(canvasCtx, p[11], p[13], 20); // L Upper Arm
-                    drawCartoonBone(canvasCtx, p[13], p[15], 16); // L Lower Arm
-                    drawCartoonBone(canvasCtx, p[12], p[14], 20); // R Upper Arm
-                    drawCartoonBone(canvasCtx, p[14], p[16], 16); // R Lower Arm
-                    
-                    // Legs
-                    drawCartoonBone(canvasCtx, p[23], p[25], 24); // L Upper Leg
-                    drawCartoonBone(canvasCtx, p[25], p[27], 20); // L Lower Leg
-                    drawCartoonBone(canvasCtx, p[24], p[26], 24); // R Upper Leg
-                    drawCartoonBone(canvasCtx, p[26], p[28], 20); // R Lower Leg
-                }
-                
-                // 3. Draw Animated Skull Face
-                if (activeFaces.length > 0) {
-                    const face = activeFaces[0];
-                    
-                    // A. Solid Bone Skull Base
-                    drawRiggedPolygon(canvasCtx, face, FACEMESH_FACE_OVAL, '#f8fafc', '#1f2937', 5);
-                    
-                    // B. Angry Skeletal Brow Ridges (Thickened to look like skull bone)
-                    drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYEBROW, '#1f2937', '#1f2937', 7);
-                    drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYEBROW, '#1f2937', '#1f2937', 7);
+                    if (activeFaces.length > 0) {
+                        const face = activeFaces[0];
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_FACE_OVAL, '#f8fafc', '#1f2937', 5);
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYEBROW, '#1f2937', '#1f2937', 7);
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYEBROW, '#1f2937', '#1f2937', 7);
 
-                    // C. Skeletal Cheek Hollow Shading (Adds 3D depth to the skull)
-                    const leftCheek = [234, 127, 162, 58, 132];
-                    canvasCtx.beginPath();
-                    canvasCtx.moveTo(face[leftCheek[0]].x * canvasElement.width, face[leftCheek[0]].y * canvasElement.height);
-                    for(let i=1; i<leftCheek.length; i++) canvasCtx.lineTo(face[leftCheek[i]].x * canvasElement.width, face[leftCheek[i]].y * canvasElement.height);
-                    canvasCtx.fillStyle = '#cbd5e1'; // Subtle shadow color
-                    canvasCtx.fill();
+                        // Nose Cavity
+                        if (face.length > 279) {
+                            canvasCtx.fillStyle = '#111827';
+                            canvasCtx.beginPath();
+                            canvasCtx.moveTo(face[4].x * canvasElement.width, face[4].y * canvasElement.height); 
+                            canvasCtx.lineTo(face[279].x * canvasElement.width, face[279].y * canvasElement.height); 
+                            canvasCtx.lineTo(face[49].x * canvasElement.width, face[49].y * canvasElement.height); 
+                            canvasCtx.closePath();
+                            canvasCtx.fill();
+                        }
 
-                    const rightCheek = [454, 356, 389, 288, 361];
-                    canvasCtx.beginPath();
-                    canvasCtx.moveTo(face[rightCheek[0]].x * canvasElement.width, face[rightCheek[0]].y * canvasElement.height);
-                    for(let i=1; i<rightCheek.length; i++) canvasCtx.lineTo(face[rightCheek[i]].x * canvasElement.width, face[rightCheek[i]].y * canvasElement.height);
-                    canvasCtx.fillStyle = '#cbd5e1'; 
-                    canvasCtx.fill();
-
-                    // D. Dark Hollow Nose Cavity (Triangle)
-                    if (face.length > 279) {
-                        canvasCtx.fillStyle = '#111827';
+                        // Skeletal Mouth
+                        const innerMouth = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
                         canvasCtx.beginPath();
-                        canvasCtx.moveTo(face[4].x * canvasElement.width, face[4].y * canvasElement.height); // Tip
-                        canvasCtx.lineTo(face[279].x * canvasElement.width, face[279].y * canvasElement.height); // Right
-                        canvasCtx.lineTo(face[49].x * canvasElement.width, face[49].y * canvasElement.height); // Left
+                        canvasCtx.moveTo(face[innerMouth[0]].x * canvasElement.width, face[innerMouth[0]].y * canvasElement.height);
+                        for (let i = 1; i < innerMouth.length; i++) canvasCtx.lineTo(face[innerMouth[i]].x * canvasElement.width, face[innerMouth[i]].y * canvasElement.height);
                         canvasCtx.closePath();
-                        canvasCtx.fill();
-                    }
-
-                    // E. Skeletal Mouth / Teeth
-                    const innerMouth = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
-                    canvasCtx.beginPath();
-                    canvasCtx.moveTo(face[innerMouth[0]].x * canvasElement.width, face[innerMouth[0]].y * canvasElement.height);
-                    for (let i = 1; i < innerMouth.length; i++) {
-                        canvasCtx.lineTo(face[innerMouth[i]].x * canvasElement.width, face[innerMouth[i]].y * canvasElement.height);
-                    }
-                    canvasCtx.closePath();
-                    canvasCtx.fillStyle = '#111827'; // Dark inner mouth cavity
-                    canvasCtx.fill();
-                    
-                    // Outer lip outline
-                    drawConnectors(canvasCtx, face, FACEMESH_LIPS, {color: '#1f2937', lineWidth: 3});
-
-                    // Draw vertical "Skeleton Teeth" lines across lips
-                    canvasCtx.strokeStyle = '#1f2937';
-                    canvasCtx.lineWidth = 2.5;
-                    const topLipPts = [82, 13, 312, 81, 311];
-                    const bottomLipPts = [87, 14, 317, 178, 402];
-                    for(let i=0; i<topLipPts.length; i++) {
-                        canvasCtx.beginPath();
-                        canvasCtx.moveTo(face[topLipPts[i]].x * canvasElement.width, face[topLipPts[i]].y * canvasElement.height - 4);
-                        canvasCtx.lineTo(face[bottomLipPts[i]].x * canvasElement.width, face[bottomLipPts[i]].y * canvasElement.height + 4);
-                        canvasCtx.stroke();
-                    }
-                    
-                    // F. Hollow Dark Eye Sockets
-                    drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYE, '#111827', '#1f2937', 3);
-                    drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYE, '#111827', '#1f2937', 3);
-                    
-                    // Glowing Red pupils inside sockets
-                    if (face.length > 473) {
-                        const rightIris = face[468]; 
-                        const leftIris = face[473];
-
-                        canvasCtx.fillStyle = '#ff0000'; // Evil red glow
-                        canvasCtx.shadowColor = '#ff0000';
-                        canvasCtx.shadowBlur = 10;
-                        
-                        canvasCtx.beginPath();
-                        canvasCtx.arc(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height, 6, 0, 2 * Math.PI);
+                        canvasCtx.fillStyle = '#111827'; 
                         canvasCtx.fill();
                         
+                        drawConnectors(canvasCtx, face, FACEMESH_LIPS, {color: '#1f2937', lineWidth: 3});
+
+                        canvasCtx.strokeStyle = '#1f2937';
+                        canvasCtx.lineWidth = 2.5;
+                        const topLipPts = [82, 13, 312, 81, 311];
+                        const bottomLipPts = [87, 14, 317, 178, 402];
+                        for(let i=0; i<topLipPts.length; i++) {
+                            canvasCtx.beginPath();
+                            canvasCtx.moveTo(face[topLipPts[i]].x * canvasElement.width, face[topLipPts[i]].y * canvasElement.height - 4);
+                            canvasCtx.lineTo(face[bottomLipPts[i]].x * canvasElement.width, face[bottomLipPts[i]].y * canvasElement.height + 4);
+                            canvasCtx.stroke();
+                        }
+                        
+                        // Eye Sockets
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYE, '#111827', '#1f2937', 3);
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYE, '#111827', '#1f2937', 3);
+                        
+                        if (face.length > 473) {
+                            const rightIris = face[468]; 
+                            const leftIris = face[473];
+                            canvasCtx.fillStyle = '#ff0000'; 
+                            canvasCtx.shadowColor = '#ff0000';
+                            canvasCtx.shadowBlur = 10;
+                            
+                            canvasCtx.beginPath(); canvasCtx.arc(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height, 6, 0, 2 * Math.PI); canvasCtx.fill();
+                            canvasCtx.beginPath(); canvasCtx.arc(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height, 6, 0, 2 * Math.PI); canvasCtx.fill();
+                            canvasCtx.shadowBlur = 0; 
+                        }
+                    }
+
+                } else if (displayMode === 'human') {
+                    // ==========================================
+                    // HUMAN RIG MODE RENDERING
+                    // Uses external images mapped to skeleton
+                    // ==========================================
+                    if (activePose && activePose.length > 28) {
+                        const p = activePose;
+                        const midShoulder = { x: (p[11].x + p[12].x)/2, y: (p[11].y + p[12].y)/2 };
+                        const midHip = { x: (p[23].x + p[24].x)/2, y: (p[23].y + p[24].y)/2 };
+                        
+                        // Draw Arms
+                        drawRiggedImage(canvasCtx, humanUpperArmImg, p[11], p[13], 0.35); // L Upper Arm
+                        drawRiggedImage(canvasCtx, humanLowerArmImg, p[13], p[15], 0.25);  // L Lower Arm
+                        drawRiggedImage(canvasCtx, humanUpperArmImg, p[12], p[14], 0.35); // R Upper Arm
+                        drawRiggedImage(canvasCtx, humanLowerArmImg, p[14], p[16], 0.25);  // R Lower Arm
+                        
+                        // Draw Legs
+                        drawRiggedImage(canvasCtx, humanUpperLegImg, p[23], p[25], 0.45); // L Upper Leg
+                        drawRiggedImage(canvasCtx, humanLowerLegImg, p[25], p[27], 0.35); // L Lower Leg
+                        drawRiggedImage(canvasCtx, humanUpperLegImg, p[24], p[26], 0.45); // R Upper Leg
+                        drawRiggedImage(canvasCtx, humanLowerLegImg, p[26], p[28], 0.35); // R Lower Leg
+                        
+                        // Draw Torso (Drawn after limbs so it sits on top)
+                        drawRiggedImage(canvasCtx, humanTorsoImg, midShoulder, midHip, 0.9);
+                    }
+                    
+                    // Draw Dynamic Expressive Human Face
+                    if (activeFaces.length > 0) {
+                        const face = activeFaces[0];
+                        
+                        // Skin Face Base
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_FACE_OVAL, '#fbcfb5', '#d99f81', 3);
+                        
+                        // Normal Eyebrows
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYEBROW, '#374151', '#374151', 3);
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYEBROW, '#374151', '#374151', 3);
+
+                        // Human Mouth (Dark inner space, fleshy lips)
+                        const innerMouth = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
                         canvasCtx.beginPath();
-                        canvasCtx.arc(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height, 6, 0, 2 * Math.PI);
+                        canvasCtx.moveTo(face[innerMouth[0]].x * canvasElement.width, face[innerMouth[0]].y * canvasElement.height);
+                        for (let i = 1; i < innerMouth.length; i++) canvasCtx.lineTo(face[innerMouth[i]].x * canvasElement.width, face[innerMouth[i]].y * canvasElement.height);
+                        canvasCtx.closePath();
+                        canvasCtx.fillStyle = '#4c1d95'; // Dark throat
                         canvasCtx.fill();
-
-                        canvasCtx.shadowBlur = 0; // Reset shadow
-                    }
-                }
-
-                // 4. Draw Skeletal Hands
-                if (activeHands.length > 0) {
-                    for (let i = 0; i < activeHands.length; i++) {
-                        // Draw thin "finger bones"
-                        drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: '#1f2937', lineWidth: 10});
-                        drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: '#f8fafc', lineWidth: 6});
                         
-                        // Hand Joints
-                        drawLandmarks(canvasCtx, activeHands[i], {color: '#f8fafc', fillColor: '#1f2937', lineWidth: 2, radius: 4});
+                        drawConnectors(canvasCtx, face, FACEMESH_LIPS, {color: '#e17a7a', lineWidth: 4}); // Lips
+                        
+                        // Normal White Eyes
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYE, '#ffffff', '#1f2937', 2);
+                        drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYE, '#ffffff', '#1f2937', 2);
+                        
+                        if (face.length > 473) {
+                            const rightIris = face[468]; 
+                            const leftIris = face[473];
+                            
+                            // Blue Human Pupils
+                            canvasCtx.fillStyle = '#3b82f6'; 
+                            canvasCtx.beginPath(); canvasCtx.arc(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height, 5, 0, 2 * Math.PI); canvasCtx.fill();
+                            canvasCtx.beginPath(); canvasCtx.arc(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height, 5, 0, 2 * Math.PI); canvasCtx.fill();
+                            
+                            // Anime shine
+                            canvasCtx.fillStyle = '#ffffff';
+                            canvasCtx.beginPath(); canvasCtx.arc(rightIris.x * canvasElement.width + 2, rightIris.y * canvasElement.height - 2, 2, 0, 2 * Math.PI); canvasCtx.fill();
+                            canvasCtx.beginPath(); canvasCtx.arc(leftIris.x * canvasElement.width + 2, leftIris.y * canvasElement.height - 2, 2, 0, 2 * Math.PI); canvasCtx.fill();
+                        }
                     }
                 }
-            } else {
-                // --- TACTICAL UI MODE ---
-                
-                if (activeFaces.length > 0) {
-                    uiStatus.innerText = "SUBJECT LOCKED";
-                    uiStatus.className = "text-[#00f0ff] font-bold text-glow";
-                    uiMatchBar.style.width = "98%";
-                    uiMatchVal.innerText = "98.4%";
-                    uiHr.innerText = (72 + Math.sin(frameCount * 0.1) * 5).toFixed(0) + " BPM";
-                    uiSym.innerText = "0.994";
-                    uiThreat.innerText = "MONITORING";
-                    uiThreat.className = "text-yellow-400";
+
+            // Hands apply to both Canvas modes
+            if (activeHands.length > 0) {
+                for (let i = 0; i < activeHands.length; i++) {
+                    const boneColor = displayMode === 'skeleton' ? '#f8fafc' : '#fbcfb5';
+                    const outlineColor = displayMode === 'skeleton' ? '#1f2937' : '#d99f81';
                     
-                    for (const landmarks of activeFaces) {
-                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                        for (const lm of landmarks) {
-                            minX = Math.min(minX, lm.x);
-                            minY = Math.min(minY, lm.y);
-                            maxX = Math.max(maxX, lm.x);
-                            maxY = Math.max(maxY, lm.y);
-                        }
-                        
-                        const pMinX = minX * canvasElement.width;
-                        const pMinY = minY * canvasElement.height;
-                        const pMaxX = maxX * canvasElement.width;
-                        const pMaxY = maxY * canvasElement.height;
-
-                        const pad = 20;
-                        drawCyberBox(canvasCtx, pMinX - pad, pMinY - pad, pMaxX + pad, pMaxY + pad, '#00f0ff', 'FACE_TRK');
-
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {
-                            color: 'rgba(0, 240, 255, 0.15)', 
-                            lineWidth: 0.5
-                        });
-                        
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, {color: 'rgba(0, 255, 0, 0.8)', lineWidth: 1});
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, {color: 'rgba(0, 255, 0, 0.8)', lineWidth: 1});
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {color: 'rgba(255, 0, 0, 0.5)', lineWidth: 1});
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: '#00f0ff', lineWidth: 1.5});
-
-                        const nose = landmarks[1];
-                        const leftCheek = landmarks[234];
-                        const rightCheek = landmarks[454];
-
-                        const mockYaw = ((nose.x - 0.5) * 100).toFixed(2);
-                        const mockPitch = ((nose.y - 0.5) * 100).toFixed(2);
-                        const mockRoll = ((leftCheek.y - rightCheek.y) * 100).toFixed(2);
-
-                        uiPitch.innerText = mockPitch;
-                        uiYaw.innerText = mockYaw;
-                        uiRoll.innerText = mockRoll;
-
-                        if(frameCount % 30 === 0) {
-                            addLog(`TRK_UPD: Y:${mockYaw} P:${mockPitch}`);
-                        }
-                    }
-                } else {
-                    uiStatus.innerText = "SCANNING...";
-                    uiStatus.className = "text-yellow-400 font-bold";
-                    uiMatchBar.style.width = "0%";
-                    uiMatchVal.innerText = "0%";
-                    uiHr.innerText = "-- BPM";
-                    uiSym.innerText = "--";
-                    uiThreat.innerText = "UNDETERMINED";
-                    uiThreat.className = "text-green-400";
-                    
-                    uiPitch.innerText = "0.00";
-                    uiYaw.innerText = "0.00";
-                    uiRoll.innerText = "0.00";
+                    drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: outlineColor, lineWidth: 10});
+                    drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: boneColor, lineWidth: 6});
+                    drawLandmarks(canvasCtx, activeHands[i], {color: boneColor, fillColor: outlineColor, lineWidth: 2, radius: 4});
                 }
-
-                if (activeHands.length > 0) {
-                    uiHands.innerText = `${activeHands.length} DETECTED`;
-                    uiHands.className = "text-[#ff3c00] font-bold"; 
-
-                    for (let i = 0; i < activeHands.length; i++) {
-                        const landmarks = activeHands[i];
-                        
-                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                        for (const lm of landmarks) {
-                            minX = Math.min(minX, lm.x);
-                            minY = Math.min(minY, lm.y);
-                            maxX = Math.max(maxX, lm.x);
-                            maxY = Math.max(maxY, lm.y);
-                        }
-                        
-                        const pMinX = minX * canvasElement.width;
-                        const pMinY = minY * canvasElement.height;
-                        const pMaxX = maxX * canvasElement.width;
-                        const pMaxY = maxY * canvasElement.height;
-
-                        const pad = 15;
-                        drawCyberBox(canvasCtx, pMinX - pad, pMinY - pad, pMaxX + pad, pMaxY + pad, '#ff3c00', `HAND_TRK_${i}`);
-                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 60, 0, 0.6)', lineWidth: 1.5});
-                        drawLandmarks(canvasCtx, landmarks, {color: '#ff3c00', lineWidth: 1, radius: 2});
-                    }
-
-                    if(frameCount % 60 === 0) {
-                        addLog(`KINEMATIC_SYS: HAND MOTION TRACKED`);
-                    }
-                } else {
-                    uiHands.innerText = "NONE";
-                    uiHands.className = "text-gray-500";
-                }
-            } 
+            }
 
             canvasCtx.restore();
             requestAnimationFrame(renderLoop);
