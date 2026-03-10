@@ -466,6 +466,10 @@
                     const face = activeFaces[0];
                     drawConnectors(canvasCtx, face, FACEMESH_FACE_OVAL, {color: '#1f2937', lineWidth: 4});
                     
+                    // Add basic eye outlines so they aren't just floating dots
+                    drawConnectors(canvasCtx, face, FACEMESH_RIGHT_EYE, {color: '#1f2937', lineWidth: 2});
+                    drawConnectors(canvasCtx, face, FACEMESH_LEFT_EYE, {color: '#1f2937', lineWidth: 2});
+                    
                     // Eye Tracking Rendering (Iris points: 468 Right, 473 Left)
                     if (face.length > 473) {
                         const rightIris = face[468]; 
@@ -638,6 +642,7 @@
             holistic.setOptions({
                 modelComplexity: 1, 
                 smoothLandmarks: true, 
+                refineFaceLandmarks: true, // Crucial for getting iris points
                 minDetectionConfidence: 0.5,
                 minTrackingConfidence: 0.5
             });
