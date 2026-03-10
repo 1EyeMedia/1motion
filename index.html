@@ -295,6 +295,10 @@
         let activeImage = null;
         let displayMode = 'tactical'; // 'tactical' or 'kinematic'
 
+        // Load Brand Logo
+        const brandLogo = new Image();
+        brandLogo.src = 'https://i.ibb.co/rfs2sDK5/Whats-App-Image-2026-02-12-at-11-40-19-PM-removebg-preview.png';
+
         // --- Utility: Add fake data to stream ---
         function addLog(msg) {
             const div = document.createElement('div');
@@ -364,40 +368,6 @@
             ctx.fillStyle = boxColor;
             ctx.font = '10px "Share Tech Mono"';
             ctx.fillText(`ID: ${label}_${frameCount % 1000}`, minX, minY - 10);
-        }
-
-        // --- Volumetric Object Proxy ---
-        function drawHeldObjectVolume(ctx, landmarks, mode) {
-            const points = [0, 4, 8, 12, 16, 20].map(idx => landmarks[idx]);
-            
-            ctx.beginPath();
-            ctx.moveTo(points[0].x * canvasElement.width, points[0].y * canvasElement.height);
-            for(let i = 1; i < points.length; i++) {
-                ctx.lineTo(points[i].x * canvasElement.width, points[i].y * canvasElement.height);
-            }
-            ctx.closePath();
-
-            if (mode === 'kinematic') {
-                ctx.fillStyle = 'rgba(255, 60, 0, 0.15)';
-                ctx.strokeStyle = 'rgba(255, 60, 0, 0.8)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
-            } else {
-                ctx.fillStyle = 'rgba(0, 240, 255, 0.15)'; 
-                ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([2, 4]);
-            }
-            ctx.fill();
-            ctx.stroke();
-            ctx.setLineDash([]); 
-
-            const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-            const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-            
-            ctx.fillStyle = mode === 'kinematic' ? '#1f2937' : '#ffffff';
-            ctx.font = '10px "Share Tech Mono"';
-            ctx.fillText('OBJ_VOL_SCAN', cx * canvasElement.width, cy * canvasElement.height);
         }
 
         // --- Animated Vector Rig Tool ---
@@ -514,14 +484,35 @@
                 // --- ANIMATED 2D SKELETON AVATAR MODE ---
                 
                 // 1. Draw solid Blueprint / Studio Background
-                canvasCtx.fillStyle = '#e5e7eb'; // Darker gray to make bones pop
+                canvasCtx.fillStyle = '#050a0f'; // Deep cyber black background
                 canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
                 
-                // Draw a subtle tech grid
-                canvasCtx.strokeStyle = '#d1d5db';
+                // Draw a subtle glowing tech grid
+                canvasCtx.strokeStyle = 'rgba(0, 240, 255, 0.1)'; // Faint cyan grid
                 canvasCtx.lineWidth = 1;
                 for(let i=0; i<canvasElement.width; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(i,0); canvasCtx.lineTo(i,canvasElement.height); canvasCtx.stroke(); }
                 for(let i=0; i<canvasElement.height; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(0,i); canvasCtx.lineTo(canvasElement.width,i); canvasCtx.stroke(); }
+
+                // Draw Brand Logo (Top Left)
+                if (brandLogo.complete && brandLogo.naturalWidth > 0) {
+                    canvasCtx.save();
+                    const logoWidth = 150; 
+                    const logoHeight = (brandLogo.naturalHeight / brandLogo.naturalWidth) * logoWidth;
+                    
+                    // Un-mirror the canvas specifically for the logo so it isn't drawn backwards
+                    // This cancels out the CSS scaleX(-1) mirror effect applied to the whole canvas
+                    canvasCtx.translate(canvasElement.width, 0);
+                    canvasCtx.scale(-1, 1);
+                    
+                    // Add a neon cyan glow for the dark background
+                    canvasCtx.shadowColor = 'rgba(0, 240, 255, 0.5)';
+                    canvasCtx.shadowBlur = 15;
+                    canvasCtx.shadowOffsetY = 0;
+                    
+                    // Draw at standard top-left coordinates (30, 30)
+                    canvasCtx.drawImage(brandLogo, 30, 30, logoWidth, logoHeight);
+                    canvasCtx.restore();
+                }
 
                 // 2. Draw Vector Cartoon Skeleton Body
                 if (activePose && activePose.length > 28) {
@@ -531,6 +522,11 @@
                     const midShoulder = { x: (p[11].x + p[12].x)/2, y: (p[11].y + p[12].y)/2 };
                     const midHip = { x: (p[23].x + p[24].x)/2, y: (p[23].y + p[24].y)/2 };
                     drawCartoonBone(canvasCtx, midShoulder, midHip, 35); // Spine
+                    
+                    // Draw Neck
+                    let neckTop = p[0]; // fallback to pose nose
+                    if (activeFaces.length > 0) neckTop = activeFaces[0][152]; // Connect to bottom chin of face mesh
+                    drawCartoonBone(canvasCtx, midShoulder, neckTop, 20); // Neck
                     
                     // Draw horizontal Ribs
                     for (let i = 0.2; i <= 0.8; i += 0.2) {
@@ -567,7 +563,26 @@
                     // A. Solid Bone Skull Base
                     drawRiggedPolygon(canvasCtx, face, FACEMESH_FACE_OVAL, '#f8fafc', '#1f2937', 5);
                     
-                    // B. Dark Hollow Nose Cavity (Triangle)
+                    // B. Angry Skeletal Brow Ridges (Thickened to look like skull bone)
+                    drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYEBROW, '#1f2937', '#1f2937', 7);
+                    drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYEBROW, '#1f2937', '#1f2937', 7);
+
+                    // C. Skeletal Cheek Hollow Shading (Adds 3D depth to the skull)
+                    const leftCheek = [234, 127, 162, 58, 132];
+                    canvasCtx.beginPath();
+                    canvasCtx.moveTo(face[leftCheek[0]].x * canvasElement.width, face[leftCheek[0]].y * canvasElement.height);
+                    for(let i=1; i<leftCheek.length; i++) canvasCtx.lineTo(face[leftCheek[i]].x * canvasElement.width, face[leftCheek[i]].y * canvasElement.height);
+                    canvasCtx.fillStyle = '#cbd5e1'; // Subtle shadow color
+                    canvasCtx.fill();
+
+                    const rightCheek = [454, 356, 389, 288, 361];
+                    canvasCtx.beginPath();
+                    canvasCtx.moveTo(face[rightCheek[0]].x * canvasElement.width, face[rightCheek[0]].y * canvasElement.height);
+                    for(let i=1; i<rightCheek.length; i++) canvasCtx.lineTo(face[rightCheek[i]].x * canvasElement.width, face[rightCheek[i]].y * canvasElement.height);
+                    canvasCtx.fillStyle = '#cbd5e1'; 
+                    canvasCtx.fill();
+
+                    // D. Dark Hollow Nose Cavity (Triangle)
                     if (face.length > 279) {
                         canvasCtx.fillStyle = '#111827';
                         canvasCtx.beginPath();
@@ -578,7 +593,7 @@
                         canvasCtx.fill();
                     }
 
-                    // C. Skeletal Mouth / Teeth
+                    // E. Skeletal Mouth / Teeth
                     const innerMouth = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
                     canvasCtx.beginPath();
                     canvasCtx.moveTo(face[innerMouth[0]].x * canvasElement.width, face[innerMouth[0]].y * canvasElement.height);
@@ -594,17 +609,17 @@
 
                     // Draw vertical "Skeleton Teeth" lines across lips
                     canvasCtx.strokeStyle = '#1f2937';
-                    canvasCtx.lineWidth = 2;
-                    const topLipPts = [82, 13, 312];
-                    const bottomLipPts = [87, 14, 317];
+                    canvasCtx.lineWidth = 2.5;
+                    const topLipPts = [82, 13, 312, 81, 311];
+                    const bottomLipPts = [87, 14, 317, 178, 402];
                     for(let i=0; i<topLipPts.length; i++) {
                         canvasCtx.beginPath();
-                        canvasCtx.moveTo(face[topLipPts[i]].x * canvasElement.width, face[topLipPts[i]].y * canvasElement.height - 5);
-                        canvasCtx.lineTo(face[bottomLipPts[i]].x * canvasElement.width, face[bottomLipPts[i]].y * canvasElement.height + 5);
+                        canvasCtx.moveTo(face[topLipPts[i]].x * canvasElement.width, face[topLipPts[i]].y * canvasElement.height - 4);
+                        canvasCtx.lineTo(face[bottomLipPts[i]].x * canvasElement.width, face[bottomLipPts[i]].y * canvasElement.height + 4);
                         canvasCtx.stroke();
                     }
                     
-                    // D. Hollow Dark Eye Sockets
+                    // F. Hollow Dark Eye Sockets
                     drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYE, '#111827', '#1f2937', 3);
                     drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYE, '#111827', '#1f2937', 3);
                     
@@ -638,9 +653,6 @@
                         
                         // Hand Joints
                         drawLandmarks(canvasCtx, activeHands[i], {color: '#f8fafc', fillColor: '#1f2937', lineWidth: 2, radius: 4});
-
-                        // Draw Object tracking mesh
-                        drawHeldObjectVolume(canvasCtx, activeHands[i], 'kinematic');
                     }
                 }
             } else {
@@ -736,7 +748,6 @@
 
                         const pad = 15;
                         drawCyberBox(canvasCtx, pMinX - pad, pMinY - pad, pMaxX + pad, pMaxY + pad, '#ff3c00', `HAND_TRK_${i}`);
-                        drawHeldObjectVolume(canvasCtx, landmarks, 'tactical');
                         drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 60, 0, 0.6)', lineWidth: 1.5});
                         drawLandmarks(canvasCtx, landmarks, {color: '#ff3c00', lineWidth: 1, radius: 2});
                     }
