@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tactical Biometric Scanner</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- MediaPipe Libraries for Face Mesh & Holistic -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050a0f;
+            font-family: 'Share Tech Mono', monospace;
+            color: #00f0ff;
+            user-select: none;
+        }
+
+        /* Cyber UI Overlay Elements */
+        .cyber-panel {
+            background: rgba(0, 20, 40, 0.6);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1) inset;
+            backdrop-filter: blur(4px);
+        }
+
+        .cyber-border {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-color: #00f0ff;
+            border-style: solid;
+        }
+        .tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+        .tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+        .bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+        .br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+        /* CRT Scanline Effect */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Vignette */
+        .vignette {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: 0 0 200px rgba(0,0,0,0.9) inset;
+            pointer-events: none;
+            z-index: 40;
+        }
+
+        /* Video Filter (Night Vision / Tech look) */
+        video {
+            filter: grayscale(80%) contrast(120%) brightness(80%) sepia(50%) hue-rotate(180deg);
+            transform: scaleX(-1); /* Mirror image */
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            transform: scaleX(-1); /* Mirror canvas to match video */
+            object-fit: cover;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Animations */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .animate-blink { animation: blink 1s infinite; }
+        
+        @keyframes pulse-glow {
+            0%, 100% { text-shadow: 0 0 5px #00f0ff, 0 0 10px #00f0ff; }
+            50% { text-shadow: 0 0 2px #00f0ff; }
+        }
+        .text-glow { animation: pulse-glow 2s infinite; }
+
+        /* Reticle */
+        .reticle-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 30;
+            transition: opacity 0.5s ease;
+        }
+        .reticle-center::before, .reticle-center::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 240, 255, 0.6);
+        }
+        .reticle-center::before { top: 50%; left: -10px; right: -10px; height: 1px; transform: translateY(-50%); }
+        .reticle-center::after { left: 50%; top: -10px; bottom: -10px; width: 1px; transform: translateX(-50%); }
+
+        .scanlines, .vignette {
+            transition: opacity 0.5s ease;
+        }
+
+        /* Loader */
+        #loader {
+            background: #000;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen relative">
+
+    <!-- Loading Screen -->
+    <div id="loader" class="absolute inset-0 w-full h-full text-[#00f0ff]">
+        <div class="text-4xl mb-4 text-glow">INITIALIZING SECURE LINK...</div>
+        <div class="text-sm opacity-70">AWAITING CAMERA AUTHORIZATION & NEURAL NET ASSETS</div>
+        <div class="mt-8 border border-[#00f0ff] p-1 w-64">
+            <div id="loading-bar" class="h-4 bg-[#00f0ff] w-0 transition-all duration-300"></div>
+        </div>
+    </div>
+
+    <!-- Media Container -->
+    <div class="absolute inset-0 z-0">
+        <video id="input_video" class="absolute inset-0" autoplay playsinline></video>
+        <canvas id="output_canvas" class="absolute inset-0"></canvas>
+    </div>
+
+    <!-- Mode Toggle Button -->
+    <button id="mode-btn" class="absolute bottom-6 right-6 z-50 cyber-panel px-4 py-2 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-colors border border-[#00f0ff] cursor-pointer font-bold tracking-widest text-xs pointer-events-auto shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+        INITIATE KINEMATIC CANVAS
+    </button>
+
+    <!-- UI Overlay Elements -->
+    <div id="ui-overlay" class="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between transition-opacity duration-500">
+        
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start">
+            <div class="cyber-panel p-3 relative w-64">
+                <div class="cyber-border tl"></div><div class="cyber-border tr"></div>
+                <div class="cyber-border bl"></div><div class="cyber-border br"></div>
+                <div class="text-xs text-[#00f0ff] opacity-80 mb-1">SYS.STATUS</div>
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 bg-red-500 rounded-full animate-blink"></div>
+                    <div class="font-bold tracking-widest">REC / ACTIVE</div>
+                </div>
+                <div class="text-[10px] mt-2 opacity-60">LINK: ENCRYPTED 2048-BIT RSA</div>
+            </div>
+
+            <div class="text-center text-glow">
+                <h1 class="text-2xl font-bold tracking-[0.2em]">INTEL_SYS v9.4.2</h1>
+                <div class="text-xs opacity-70 tracking-widest mt-1">FACIAL TOPOLOGY SCANNER</div>
+            </div>
+
+            <div class="cyber-panel p-3 relative w-64 text-right">
+                <div class="cyber-border tl"></div><div class="cyber-border tr"></div>
+                <div class="cyber-border bl"></div><div class="cyber-border br"></div>
+                <div class="text-xs text-[#00f0ff] opacity-80 mb-1">COORDINATES</div>
+                <div id="ui-latlng" class="font-bold">38° 53′ 52″ N, 77° 2′ 11″ W</div>
+                <div class="text-[10px] mt-2 opacity-60">SAT_LINK: ONLINE</div>
+            </div>
+        </div>
+
+        <!-- Middle Section (Side Panels) -->
+        <div class="flex justify-between items-center h-full my-4">
+            <!-- Left Panel -->
+            <div class="cyber-panel p-4 relative w-56 h-auto">
+                <div class="cyber-border tl"></div><div class="cyber-border bl"></div>
+                <h3 class="border-b border-[#00f0ff]/30 pb-1 mb-3 text-sm tracking-wider">TARGET BIOMETRICS</h3>
+                
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <div class="opacity-60">STATUS</div>
+                        <div id="ui-status" class="text-yellow-400 font-bold">SCANNING...</div>
+                    </div>
+                    <div>
+                        <div class="opacity-60">MATCH PROBABILITY</div>
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 bg-gray-800 h-2"><div id="ui-match-bar" class="bg-[#00f0ff] h-full w-0 transition-all"></div></div>
+                            <span id="ui-match-val">0%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="opacity-60">HEART RATE (EST)</div>
+                        <div id="ui-hr" class="text-lg">-- BPM</div>
+                    </div>
+                    <div>
+                        <div class="opacity-60">FACIAL SYMMETRY</div>
+                        <div id="ui-sym">--</div>
+                    </div>
+                    <div>
+                        <div class="opacity-60">THREAT LEVEL</div>
+                        <div id="ui-threat" class="text-green-400">UNDETERMINED</div>
+                    </div>
+                    <div>
+                        <div class="opacity-60">EXTREMITIES TRK</div>
+                        <div id="ui-hands" class="text-gray-500">NONE</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel (Data Stream) -->
+            <div class="cyber-panel p-4 relative w-56 h-64 overflow-hidden flex flex-col">
+                <div class="cyber-border tr"></div><div class="cyber-border br"></div>
+                <h3 class="border-b border-[#00f0ff]/30 pb-1 mb-2 text-sm tracking-wider">LIVE DATA STREAM</h3>
+                <div id="data-stream" class="flex-1 overflow-hidden text-[9px] leading-tight space-y-1 opacity-70 flex flex-col justify-end">
+                    <!-- Logs will be injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="flex justify-center items-end">
+            <div class="cyber-panel p-2 px-6 relative flex gap-8">
+                <div class="cyber-border tl"></div><div class="cyber-border tr"></div>
+                <div class="cyber-border bl"></div><div class="cyber-border br"></div>
+                <div class="text-center">
+                    <div class="text-[10px] opacity-60">PITCH</div>
+                    <div id="ui-pitch" class="font-bold">0.00</div>
+                </div>
+                <div class="text-center border-l border-[#00f0ff]/30 pl-8">
+                    <div class="text-[10px] opacity-60">YAW</div>
+                    <div id="ui-yaw" class="font-bold">0.00</div>
+                </div>
+                <div class="text-center border-l border-[#00f0ff]/30 pl-8">
+                    <div class="text-[10px] opacity-60">ROLL</div>
+                    <div id="ui-roll" class="font-bold">0.00</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Aesthetic Overlays -->
+    <div class="reticle-center"></div>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <script>
+        // DOM Elements
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const loader = document.getElementById('loader');
+        const loadingBar = document.getElementById('loading-bar');
+        const dataStream = document.getElementById('data-stream');
+
+        // UI Elements for Data
+        const uiStatus = document.getElementById('ui-status');
+        const uiMatchBar = document.getElementById('ui-match-bar');
+        const uiMatchVal = document.getElementById('ui-match-val');
+        const uiHr = document.getElementById('ui-hr');
+        const uiSym = document.getElementById('ui-sym');
+        const uiThreat = document.getElementById('ui-threat');
+        const uiHands = document.getElementById('ui-hands');
+        const uiPitch = document.getElementById('ui-pitch');
+        const uiYaw = document.getElementById('ui-yaw');
+        const uiRoll = document.getElementById('ui-roll');
+
+        // State variables
+        let isLoaded = false;
+        let frameCount = 0;
+        let activeFaces = [];
+        let activeHands = [];
+        let activePose = null;
+        let displayMode = 'tactical'; // 'tactical' or 'kinematic'
+
+        // --- Utility: Add fake data to stream ---
+        function addLog(msg) {
+            const div = document.createElement('div');
+            const time = new Date().toISOString().substring(11, 23);
+            div.innerHTML = `<span class="text-[#00f0ff]/50">[${time}]</span> ${msg}`;
+            dataStream.appendChild(div);
+            if (dataStream.children.length > 15) {
+                dataStream.removeChild(dataStream.firstChild);
+            }
+        }
+
+        // --- Simulated Data Updates ---
+        setInterval(() => {
+            if (!isLoaded) return;
+            // Fake GPS slight drift
+            document.getElementById('ui-latlng').innerText = 
+                `38° 53′ ${50 + Math.floor(Math.random()*4)}″ N, 77° 2′ ${10 + Math.floor(Math.random()*4)}″ W`;
+            
+            // Random stream data
+            const hexCodes = Array.from({length: 4}, () => Math.floor(Math.random()*16777215).toString(16).toUpperCase().padStart(6, '0')).join(' ');
+            addLog(`0x${hexCodes} ... OK`);
+        }, 800);
+
+        // --- Resize Handler ---
+        function resizeCanvas() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- Drawing custom bounding box ---
+        function drawCyberBox(ctx, minX, minY, maxX, maxY, boxColor = '#00f0ff', label = 'UNKNOWN_SUBJ') {
+            const width = maxX - minX;
+            const height = maxY - minY;
+            const size = Math.min(width, height) * 0.15; // Corner size
+            
+            ctx.strokeStyle = boxColor;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = boxColor;
+
+            ctx.beginPath();
+            // Top Left
+            ctx.moveTo(minX, minY + size); ctx.lineTo(minX, minY); ctx.lineTo(minX + size, minY);
+            // Top Right
+            ctx.moveTo(maxX - size, minY); ctx.lineTo(maxX, minY); ctx.lineTo(maxX, minY + size);
+            // Bottom Right
+            ctx.moveTo(maxX, maxY - size); ctx.lineTo(maxX, maxY); ctx.lineTo(maxX - size, maxY);
+            // Bottom Left
+            ctx.moveTo(minX + size, maxY); ctx.lineTo(minX, maxY); ctx.lineTo(minX, maxY - size);
+            ctx.stroke();
+
+            // Reset shadow
+            ctx.shadowBlur = 0;
+
+            // Draw Crosshairs on center
+            const cx = minX + width/2;
+            const cy = minY + height/2;
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(cx - 10, cy); ctx.lineTo(cx + 10, cy);
+            ctx.moveTo(cx, cy - 10); ctx.lineTo(cx, cy + 10);
+            ctx.stroke();
+            
+            // Draw Target Info
+            ctx.fillStyle = boxColor;
+            ctx.font = '10px "Share Tech Mono"';
+            ctx.fillText(`ID: ${label}_${frameCount % 1000}`, minX, minY - 10);
+        }
+
+        // --- Volumetric Object Proxy ---
+        // Dynamically draws a geometric shape representing held objects by mapping the negative space of your grip
+        function drawHeldObjectVolume(ctx, landmarks, mode) {
+            // Indices: 0=Wrist, 4=Thumb tip, 8=Index tip, 12=Middle tip, 16=Ring tip, 20=Pinky tip
+            const points = [0, 4, 8, 12, 16, 20].map(idx => landmarks[idx]);
+            
+            ctx.beginPath();
+            ctx.moveTo(points[0].x * canvasElement.width, points[0].y * canvasElement.height);
+            for(let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x * canvasElement.width, points[i].y * canvasElement.height);
+            }
+            ctx.closePath();
+
+            if (mode === 'kinematic') {
+                ctx.fillStyle = 'rgba(255, 60, 0, 0.15)'; // Neon orange fill
+                ctx.strokeStyle = 'rgba(255, 60, 0, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.15)'; // Cyan fill
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([2, 4]);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+
+            // Calculate center of the object volume to attach a label
+            const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+            const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+            
+            ctx.fillStyle = mode === 'kinematic' ? '#1f2937' : '#ffffff';
+            ctx.font = '10px "Share Tech Mono"';
+            ctx.fillText('OBJ_VOL_SCAN', cx * canvasElement.width, cy * canvasElement.height);
+        }
+
+        // --- Mode Toggle Logic ---
+        const modeBtn = document.getElementById('mode-btn');
+        const uiOverlay = document.getElementById('ui-overlay');
+        
+        modeBtn.addEventListener('click', () => {
+            const aesthetics = document.querySelectorAll('.scanlines, .vignette, .reticle-center');
+            if (displayMode === 'tactical') {
+                displayMode = 'kinematic';
+                modeBtn.innerText = 'RETURN TO TACTICAL SYS';
+                uiOverlay.style.opacity = '0';
+                aesthetics.forEach(el => el.style.opacity = '0');
+            } else {
+                displayMode = 'tactical';
+                modeBtn.innerText = 'INITIATE KINEMATIC CANVAS';
+                uiOverlay.style.opacity = '1';
+                aesthetics.forEach(el => el.style.opacity = '1');
+            }
+        });
+
+        // --- MediaPipe Callbacks ---
+        function onHolisticResults(results) {
+            if (!isLoaded) {
+                isLoaded = true;
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+                addLog('NEURAL NET ASSETS LOADED.');
+                addLog('CAMERA LINK ESTABLISHED.');
+            }
+            
+            // Map holistic results to our existing data structures
+            // Holistic tracks a single target, perfectly fitting our UI
+            activeFaces = results.faceLandmarks ? [results.faceLandmarks] : [];
+            
+            activeHands = [];
+            if (results.leftHandLandmarks) activeHands.push(results.leftHandLandmarks);
+            if (results.rightHandLandmarks) activeHands.push(results.rightHandLandmarks);
+
+            // Extract the full body pose for the Kinematic Canvas
+            activePose = results.poseLandmarks || null;
+        }
+
+        // --- Continuous Render Loop ---
+        function renderLoop() {
+            frameCount++;
+            
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (displayMode === 'kinematic') {
+                // --- KINEMATIC CANVAS MODE ---
+                // Solid white background to hide the video feed
+                canvasCtx.fillStyle = '#ffffff';
+                canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+
+                // Draw Stick Figure Skeleton
+                if (activePose) {
+                    drawConnectors(canvasCtx, activePose, POSE_CONNECTIONS, {color: '#1f2937', lineWidth: 6});
+                    drawLandmarks(canvasCtx, activePose, {color: '#ff3c00', lineWidth: 2, radius: 4});
+                }
+                
+                // Draw Face & Eye Tracking
+                if (activeFaces.length > 0) {
+                    const face = activeFaces[0];
+                    drawConnectors(canvasCtx, face, FACEMESH_FACE_OVAL, {color: '#1f2937', lineWidth: 4});
+                    
+                    // Eye Tracking Rendering (Iris points: 468 Right, 473 Left)
+                    if (face.length > 473) {
+                        const rightIris = face[468]; 
+                        const leftIris = face[473];
+
+                        canvasCtx.fillStyle = '#ff3c00';
+                        
+                        // Right Eye Pupil
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height, 6, 0, 2 * Math.PI);
+                        canvasCtx.fill();
+                        
+                        // Left Eye Pupil
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height, 6, 0, 2 * Math.PI);
+                        canvasCtx.fill();
+                        
+                        // Eye gaze vectors (Sci-Fi effect)
+                        canvasCtx.strokeStyle = 'rgba(255, 60, 0, 0.4)';
+                        canvasCtx.lineWidth = 2;
+                        canvasCtx.beginPath();
+                        canvasCtx.moveTo(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height);
+                        canvasCtx.lineTo(rightIris.x * canvasElement.width + 50, rightIris.y * canvasElement.height - 30);
+                        canvasCtx.moveTo(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height);
+                        canvasCtx.lineTo(leftIris.x * canvasElement.width - 50, leftIris.y * canvasElement.height - 30);
+                        canvasCtx.stroke();
+                    }
+                }
+
+                // Draw Hand Skeletons & Object Mesh
+                if (activeHands.length > 0) {
+                    for (let i = 0; i < activeHands.length; i++) {
+                        // Draw the dynamically morphing shape of the held object
+                        drawHeldObjectVolume(canvasCtx, activeHands[i], 'kinematic');
+                        
+                        // Draw standard hand skeleton over the volume
+                        drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: '#1f2937', lineWidth: 4});
+                        drawLandmarks(canvasCtx, activeHands[i], {color: '#00f0ff', lineWidth: 1, radius: 3});
+                    }
+                }
+            } else {
+                // --- TACTICAL UI MODE ---
+                
+                // 1. Render Faces
+                if (activeFaces.length > 0) {
+                    uiStatus.innerText = "SUBJECT LOCKED";
+                    uiStatus.className = "text-[#00f0ff] font-bold text-glow";
+                    uiMatchBar.style.width = "98%";
+                    uiMatchVal.innerText = "98.4%";
+                    uiHr.innerText = (72 + Math.sin(frameCount * 0.1) * 5).toFixed(0) + " BPM";
+                    uiSym.innerText = "0.994";
+                    uiThreat.innerText = "MONITORING";
+                    uiThreat.className = "text-yellow-400";
+                    
+                    for (const landmarks of activeFaces) {
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        for (const lm of landmarks) {
+                            minX = Math.min(minX, lm.x);
+                            minY = Math.min(minY, lm.y);
+                            maxX = Math.max(maxX, lm.x);
+                            maxY = Math.max(maxY, lm.y);
+                        }
+                        
+                        const pMinX = minX * canvasElement.width;
+                        const pMinY = minY * canvasElement.height;
+                        const pMaxX = maxX * canvasElement.width;
+                        const pMaxY = maxY * canvasElement.height;
+
+                        const pad = 20;
+                        drawCyberBox(canvasCtx, pMinX - pad, pMinY - pad, pMaxX + pad, pMaxY + pad, '#00f0ff', 'FACE_TRK');
+
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, {
+                            color: 'rgba(0, 240, 255, 0.15)', 
+                            lineWidth: 0.5
+                        });
+                        
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, {color: 'rgba(0, 255, 0, 0.8)', lineWidth: 1});
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, {color: 'rgba(0, 255, 0, 0.8)', lineWidth: 1});
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {color: 'rgba(255, 0, 0, 0.5)', lineWidth: 1});
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: '#00f0ff', lineWidth: 1.5});
+
+                        const nose = landmarks[1];
+                        const leftCheek = landmarks[234];
+                        const rightCheek = landmarks[454];
+
+                        const mockYaw = ((nose.x - 0.5) * 100).toFixed(2);
+                        const mockPitch = ((nose.y - 0.5) * 100).toFixed(2);
+                        const mockRoll = ((leftCheek.y - rightCheek.y) * 100).toFixed(2);
+
+                        uiPitch.innerText = mockPitch;
+                        uiYaw.innerText = mockYaw;
+                        uiRoll.innerText = mockRoll;
+
+                        if(frameCount % 30 === 0) {
+                            addLog(`TRK_UPD: Y:${mockYaw} P:${mockPitch}`);
+                        }
+                    }
+                } else {
+                    uiStatus.innerText = "SCANNING...";
+                    uiStatus.className = "text-yellow-400 font-bold";
+                    uiMatchBar.style.width = "0%";
+                    uiMatchVal.innerText = "0%";
+                    uiHr.innerText = "-- BPM";
+                    uiSym.innerText = "--";
+                    uiThreat.innerText = "UNDETERMINED";
+                    uiThreat.className = "text-green-400";
+                    
+                    uiPitch.innerText = "0.00";
+                    uiYaw.innerText = "0.00";
+                    uiRoll.innerText = "0.00";
+                }
+
+                // 2. Render Hands
+                if (activeHands.length > 0) {
+                    uiHands.innerText = `${activeHands.length} DETECTED`;
+                    uiHands.className = "text-[#ff3c00] font-bold"; // Orange text alert
+
+                    for (let i = 0; i < activeHands.length; i++) {
+                        const landmarks = activeHands[i];
+                        
+                        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                        for (const lm of landmarks) {
+                            minX = Math.min(minX, lm.x);
+                            minY = Math.min(minY, lm.y);
+                            maxX = Math.max(maxX, lm.x);
+                            maxY = Math.max(maxY, lm.y);
+                        }
+                        
+                        const pMinX = minX * canvasElement.width;
+                        const pMinY = minY * canvasElement.height;
+                        const pMaxX = maxX * canvasElement.width;
+                        const pMaxY = maxY * canvasElement.height;
+
+                        const pad = 15;
+                        // Draw Tactical Orange Box around hands
+                        drawCyberBox(canvasCtx, pMinX - pad, pMinY - pad, pMaxX + pad, pMaxY + pad, '#ff3c00', `HAND_TRK_${i}`);
+
+                        // Draw the dynamic object shape inside the hand
+                        drawHeldObjectVolume(canvasCtx, landmarks, 'tactical');
+
+                        // Draw hand skeleton
+                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 60, 0, 0.6)', lineWidth: 1.5});
+                        drawLandmarks(canvasCtx, landmarks, {color: '#ff3c00', lineWidth: 1, radius: 2});
+                    }
+
+                    if(frameCount % 60 === 0) {
+                        addLog(`KINEMATIC_SYS: HAND MOTION TRACKED`);
+                    }
+                } else {
+                    uiHands.innerText = "NONE";
+                    uiHands.className = "text-gray-500";
+                }
+            } // End of Tactical Else Block
+
+            canvasCtx.restore();
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- Initialization Sequence ---
+        async function initialize() {
+            loadingBar.style.width = "20%";
+            addLog("BOOTING CORE SYSTEM...");
+
+            // Use MediaPipe Holistic to track both face and hands simultaneously 
+            // This prevents WASM module collisions that occur when using FaceMesh and Hands separately
+            const holistic = new Holistic({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+            }});
+            
+            holistic.setOptions({
+                modelComplexity: 1, 
+                smoothLandmarks: true, 
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            holistic.onResults(onHolisticResults);
+            
+            loadingBar.style.width = "60%";
+            addLog("ALLOCATING CAMERA STREAM...");
+
+            // Start the standalone rendering engine
+            renderLoop();
+
+            // Initialize Camera
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    // Send video frame to the unified holistic network
+                    await holistic.send({image: videoElement});
+                },
+                width: 1280,
+                height: 720
+            });
+            
+            try {
+                await camera.start();
+                loadingBar.style.width = "90%";
+                addLog("CAMERA STREAM OBTAINED. ANALYZING FRAMES...");
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loader').innerHTML = `
+                    <div class="text-red-500 text-2xl mb-2 font-bold animate-blink">SYSTEM FAILURE</div>
+                    <div class="text-white text-sm">ACCESS TO OPTICAL SENSOR DENIED OR UNAVAILABLE.</div>
+                    <div class="text-white text-sm mt-4">Please grant camera permissions and reload.</div>
+                `;
+            }
+        }
+
+        // Start when page loads
+        window.addEventListener('load', () => {
+            setTimeout(initialize, 1000); // Slight delay for dramatic loading effect
+        });
+
+    </script>
+</body>
+</html>
