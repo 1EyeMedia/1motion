@@ -83,8 +83,8 @@
         <canvas id="output_canvas" class="absolute inset-0"></canvas>
     </div>
 
-    <!-- Mode Toggle Button -->
-    <button id="mode-btn" class="absolute bottom-6 right-6 z-50 bg-[#001428]/80 backdrop-blur px-4 py-2 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-colors border border-[#00f0ff] cursor-pointer font-bold tracking-widest text-xs pointer-events-auto shadow-[0_0_10px_rgba(0,240,255,0.3)]">
+    <!-- Mode Toggle Button (Made Responsive for Mobile) -->
+    <button id="mode-btn" class="absolute bottom-10 left-1/2 -translate-x-1/2 md:bottom-6 md:left-auto md:translate-x-0 md:right-6 z-50 bg-[#001428]/80 backdrop-blur px-6 py-3 md:px-4 md:py-2 text-[#00f0ff] hover:bg-[#00f0ff]/20 transition-colors border border-[#00f0ff] cursor-pointer font-bold tracking-widest text-[10px] sm:text-xs whitespace-nowrap pointer-events-auto shadow-[0_0_10px_rgba(0,240,255,0.3)]">
         SWITCH TO SKELETON MODEL
     </button>
 
@@ -325,8 +325,6 @@
                 // ==========================================
                 // SKELETON MODE RENDERING
                 // ==========================================
-                    // SKELETON MODE RENDERING
-                    // ==========================================
                     if (activePose && activePose.length > 28) {
                         const p = activePose;
                         const midShoulder = { x: (p[11].x + p[12].x)/2, y: (p[11].y + p[12].y)/2 };
