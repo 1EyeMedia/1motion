@@ -291,6 +291,8 @@
         let activeFaces = [];
         let activeHands = [];
         let activePose = null;
+        let activeSegmentation = null;
+        let activeImage = null;
         let displayMode = 'tactical'; // 'tactical' or 'kinematic'
 
         // --- Utility: Add fake data to stream ---
@@ -365,9 +367,7 @@
         }
 
         // --- Volumetric Object Proxy ---
-        // Dynamically draws a geometric shape representing held objects by mapping the negative space of your grip
         function drawHeldObjectVolume(ctx, landmarks, mode) {
-            // Indices: 0=Wrist, 4=Thumb tip, 8=Index tip, 12=Middle tip, 16=Ring tip, 20=Pinky tip
             const points = [0, 4, 8, 12, 16, 20].map(idx => landmarks[idx]);
             
             ctx.beginPath();
@@ -378,27 +378,93 @@
             ctx.closePath();
 
             if (mode === 'kinematic') {
-                ctx.fillStyle = 'rgba(255, 60, 0, 0.15)'; // Neon orange fill
+                ctx.fillStyle = 'rgba(255, 60, 0, 0.15)';
                 ctx.strokeStyle = 'rgba(255, 60, 0, 0.8)';
                 ctx.lineWidth = 2;
                 ctx.setLineDash([5, 5]);
             } else {
-                ctx.fillStyle = 'rgba(0, 240, 255, 0.15)'; // Cyan fill
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.15)'; 
                 ctx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
                 ctx.lineWidth = 1.5;
                 ctx.setLineDash([2, 4]);
             }
             ctx.fill();
             ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
+            ctx.setLineDash([]); 
 
-            // Calculate center of the object volume to attach a label
             const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
             const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
             
             ctx.fillStyle = mode === 'kinematic' ? '#1f2937' : '#ffffff';
             ctx.font = '10px "Share Tech Mono"';
             ctx.fillText('OBJ_VOL_SCAN', cx * canvasElement.width, cy * canvasElement.height);
+        }
+
+        // --- Animated Vector Rig Tool ---
+        // Draws filled polygons to create a solid "Animated Avatar" look
+        function drawRiggedPolygon(ctx, landmarks, connections, fillColor, strokeColor, lineWidth) {
+            if (!landmarks || !connections) return;
+            ctx.beginPath();
+            ctx.moveTo(landmarks[connections[0][0]].x * canvasElement.width, landmarks[connections[0][0]].y * canvasElement.height);
+            for (let i = 0; i < connections.length; i++) {
+                ctx.lineTo(landmarks[connections[i][1]].x * canvasElement.width, landmarks[connections[i][1]].y * canvasElement.height);
+            }
+            ctx.closePath();
+            
+            if (fillColor) {
+                ctx.fillStyle = fillColor;
+                ctx.fill();
+            }
+            if (strokeColor) {
+                ctx.strokeStyle = strokeColor;
+                ctx.lineWidth = lineWidth;
+                ctx.lineJoin = 'round';
+                ctx.stroke();
+            }
+        }
+
+        // --- Procedural Cartoon Bone Generator ---
+        // Dynamically creates perfect 2D vector "cartoon bones" between any two tracking points
+        function drawCartoonBone(ctx, p1, p2, thickness) {
+            if (!p1 || !p2) return;
+            const x1 = p1.x * canvasElement.width;
+            const y1 = p1.y * canvasElement.height;
+            const x2 = p2.x * canvasElement.width;
+            const y2 = p2.y * canvasElement.height;
+            
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const angle = Math.atan2(dy, dx);
+            
+            // 1. Draw thick black outline
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = thickness + 8;
+            ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            
+            // Draw Outline Knobs (the classic double-bump on bones)
+            ctx.fillStyle = '#1f2937';
+            const kOffset = thickness * 0.35;
+            const cos = Math.cos(angle + Math.PI/2) * kOffset;
+            const sin = Math.sin(angle + Math.PI/2) * kOffset;
+            const knobRadius = thickness/2 + 3;
+            ctx.beginPath(); ctx.arc(x1 + cos, y1 + sin, knobRadius, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x1 - cos, y1 - sin, knobRadius, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x2 + cos, y2 + sin, knobRadius, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x2 - cos, y2 - sin, knobRadius, 0, Math.PI*2); ctx.fill();
+
+            // 2. Draw inner white bone
+            ctx.strokeStyle = '#f8fafc';
+            ctx.lineWidth = thickness;
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            
+            // Draw Inner Knobs
+            ctx.fillStyle = '#f8fafc';
+            const innerRadius = thickness/2;
+            ctx.beginPath(); ctx.arc(x1 + cos, y1 + sin, innerRadius, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x1 - cos, y1 - sin, innerRadius, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x2 + cos, y2 + sin, innerRadius, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x2 - cos, y2 - sin, innerRadius, 0, Math.PI*2); ctx.fill();
         }
 
         // --- Mode Toggle Logic ---
@@ -430,15 +496,10 @@
                 addLog('CAMERA LINK ESTABLISHED.');
             }
             
-            // Map holistic results to our existing data structures
-            // Holistic tracks a single target, perfectly fitting our UI
             activeFaces = results.faceLandmarks ? [results.faceLandmarks] : [];
-            
             activeHands = [];
             if (results.leftHandLandmarks) activeHands.push(results.leftHandLandmarks);
             if (results.rightHandLandmarks) activeHands.push(results.rightHandLandmarks);
-
-            // Extract the full body pose for the Kinematic Canvas
             activePose = results.poseLandmarks || null;
         }
 
@@ -450,70 +511,141 @@
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
             if (displayMode === 'kinematic') {
-                // --- KINEMATIC CANVAS MODE ---
-                // Solid white background to hide the video feed
-                canvasCtx.fillStyle = '#ffffff';
+                // --- ANIMATED 2D SKELETON AVATAR MODE ---
+                
+                // 1. Draw solid Blueprint / Studio Background
+                canvasCtx.fillStyle = '#e5e7eb'; // Darker gray to make bones pop
                 canvasCtx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+                
+                // Draw a subtle tech grid
+                canvasCtx.strokeStyle = '#d1d5db';
+                canvasCtx.lineWidth = 1;
+                for(let i=0; i<canvasElement.width; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(i,0); canvasCtx.lineTo(i,canvasElement.height); canvasCtx.stroke(); }
+                for(let i=0; i<canvasElement.height; i+=50) { canvasCtx.beginPath(); canvasCtx.moveTo(0,i); canvasCtx.lineTo(canvasElement.width,i); canvasCtx.stroke(); }
 
-                // Draw Stick Figure Skeleton
-                if (activePose) {
-                    drawConnectors(canvasCtx, activePose, POSE_CONNECTIONS, {color: '#1f2937', lineWidth: 6});
-                    drawLandmarks(canvasCtx, activePose, {color: '#ff3c00', lineWidth: 2, radius: 4});
+                // 2. Draw Vector Cartoon Skeleton Body
+                if (activePose && activePose.length > 28) {
+                    const p = activePose;
+                    
+                    // Draw Spine / Ribcage
+                    const midShoulder = { x: (p[11].x + p[12].x)/2, y: (p[11].y + p[12].y)/2 };
+                    const midHip = { x: (p[23].x + p[24].x)/2, y: (p[23].y + p[24].y)/2 };
+                    drawCartoonBone(canvasCtx, midShoulder, midHip, 35); // Spine
+                    
+                    // Draw horizontal Ribs
+                    for (let i = 0.2; i <= 0.8; i += 0.2) {
+                        const spineX = midShoulder.x + (midHip.x - midShoulder.x) * i;
+                        const spineY = midShoulder.y + (midHip.y - midShoulder.y) * i;
+                        const width = Math.abs(p[11].x - p[12].x) * (1.2 - i*0.4); 
+                        const rL = {x: spineX - width/2, y: spineY};
+                        const rR = {x: spineX + width/2, y: spineY};
+                        drawCartoonBone(canvasCtx, rL, rR, 15);
+                    }
+
+                    // Hips
+                    drawCartoonBone(canvasCtx, p[23], p[24], 25);
+                    // Shoulders
+                    drawCartoonBone(canvasCtx, p[11], p[12], 25);
+                    
+                    // Arms
+                    drawCartoonBone(canvasCtx, p[11], p[13], 20); // L Upper Arm
+                    drawCartoonBone(canvasCtx, p[13], p[15], 16); // L Lower Arm
+                    drawCartoonBone(canvasCtx, p[12], p[14], 20); // R Upper Arm
+                    drawCartoonBone(canvasCtx, p[14], p[16], 16); // R Lower Arm
+                    
+                    // Legs
+                    drawCartoonBone(canvasCtx, p[23], p[25], 24); // L Upper Leg
+                    drawCartoonBone(canvasCtx, p[25], p[27], 20); // L Lower Leg
+                    drawCartoonBone(canvasCtx, p[24], p[26], 24); // R Upper Leg
+                    drawCartoonBone(canvasCtx, p[26], p[28], 20); // R Lower Leg
                 }
                 
-                // Draw Face & Eye Tracking
+                // 3. Draw Animated Skull Face
                 if (activeFaces.length > 0) {
                     const face = activeFaces[0];
-                    drawConnectors(canvasCtx, face, FACEMESH_FACE_OVAL, {color: '#1f2937', lineWidth: 4});
                     
-                    // Add basic eye outlines so they aren't just floating dots
-                    drawConnectors(canvasCtx, face, FACEMESH_RIGHT_EYE, {color: '#1f2937', lineWidth: 2});
-                    drawConnectors(canvasCtx, face, FACEMESH_LEFT_EYE, {color: '#1f2937', lineWidth: 2});
+                    // A. Solid Bone Skull Base
+                    drawRiggedPolygon(canvasCtx, face, FACEMESH_FACE_OVAL, '#f8fafc', '#1f2937', 5);
                     
-                    // Eye Tracking Rendering (Iris points: 468 Right, 473 Left)
+                    // B. Dark Hollow Nose Cavity (Triangle)
+                    if (face.length > 279) {
+                        canvasCtx.fillStyle = '#111827';
+                        canvasCtx.beginPath();
+                        canvasCtx.moveTo(face[4].x * canvasElement.width, face[4].y * canvasElement.height); // Tip
+                        canvasCtx.lineTo(face[279].x * canvasElement.width, face[279].y * canvasElement.height); // Right
+                        canvasCtx.lineTo(face[49].x * canvasElement.width, face[49].y * canvasElement.height); // Left
+                        canvasCtx.closePath();
+                        canvasCtx.fill();
+                    }
+
+                    // C. Skeletal Mouth / Teeth
+                    const innerMouth = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
+                    canvasCtx.beginPath();
+                    canvasCtx.moveTo(face[innerMouth[0]].x * canvasElement.width, face[innerMouth[0]].y * canvasElement.height);
+                    for (let i = 1; i < innerMouth.length; i++) {
+                        canvasCtx.lineTo(face[innerMouth[i]].x * canvasElement.width, face[innerMouth[i]].y * canvasElement.height);
+                    }
+                    canvasCtx.closePath();
+                    canvasCtx.fillStyle = '#111827'; // Dark inner mouth cavity
+                    canvasCtx.fill();
+                    
+                    // Outer lip outline
+                    drawConnectors(canvasCtx, face, FACEMESH_LIPS, {color: '#1f2937', lineWidth: 3});
+
+                    // Draw vertical "Skeleton Teeth" lines across lips
+                    canvasCtx.strokeStyle = '#1f2937';
+                    canvasCtx.lineWidth = 2;
+                    const topLipPts = [82, 13, 312];
+                    const bottomLipPts = [87, 14, 317];
+                    for(let i=0; i<topLipPts.length; i++) {
+                        canvasCtx.beginPath();
+                        canvasCtx.moveTo(face[topLipPts[i]].x * canvasElement.width, face[topLipPts[i]].y * canvasElement.height - 5);
+                        canvasCtx.lineTo(face[bottomLipPts[i]].x * canvasElement.width, face[bottomLipPts[i]].y * canvasElement.height + 5);
+                        canvasCtx.stroke();
+                    }
+                    
+                    // D. Hollow Dark Eye Sockets
+                    drawRiggedPolygon(canvasCtx, face, FACEMESH_RIGHT_EYE, '#111827', '#1f2937', 3);
+                    drawRiggedPolygon(canvasCtx, face, FACEMESH_LEFT_EYE, '#111827', '#1f2937', 3);
+                    
+                    // Glowing Red pupils inside sockets
                     if (face.length > 473) {
                         const rightIris = face[468]; 
                         const leftIris = face[473];
 
-                        canvasCtx.fillStyle = '#ff3c00';
+                        canvasCtx.fillStyle = '#ff0000'; // Evil red glow
+                        canvasCtx.shadowColor = '#ff0000';
+                        canvasCtx.shadowBlur = 10;
                         
-                        // Right Eye Pupil
                         canvasCtx.beginPath();
                         canvasCtx.arc(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height, 6, 0, 2 * Math.PI);
                         canvasCtx.fill();
                         
-                        // Left Eye Pupil
                         canvasCtx.beginPath();
                         canvasCtx.arc(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height, 6, 0, 2 * Math.PI);
                         canvasCtx.fill();
-                        
-                        // Eye gaze vectors (Sci-Fi effect)
-                        canvasCtx.strokeStyle = 'rgba(255, 60, 0, 0.4)';
-                        canvasCtx.lineWidth = 2;
-                        canvasCtx.beginPath();
-                        canvasCtx.moveTo(rightIris.x * canvasElement.width, rightIris.y * canvasElement.height);
-                        canvasCtx.lineTo(rightIris.x * canvasElement.width + 50, rightIris.y * canvasElement.height - 30);
-                        canvasCtx.moveTo(leftIris.x * canvasElement.width, leftIris.y * canvasElement.height);
-                        canvasCtx.lineTo(leftIris.x * canvasElement.width - 50, leftIris.y * canvasElement.height - 30);
-                        canvasCtx.stroke();
+
+                        canvasCtx.shadowBlur = 0; // Reset shadow
                     }
                 }
 
-                // Draw Hand Skeletons & Object Mesh
+                // 4. Draw Skeletal Hands
                 if (activeHands.length > 0) {
                     for (let i = 0; i < activeHands.length; i++) {
-                        // Draw the dynamically morphing shape of the held object
-                        drawHeldObjectVolume(canvasCtx, activeHands[i], 'kinematic');
+                        // Draw thin "finger bones"
+                        drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: '#1f2937', lineWidth: 10});
+                        drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: '#f8fafc', lineWidth: 6});
                         
-                        // Draw standard hand skeleton over the volume
-                        drawConnectors(canvasCtx, activeHands[i], HAND_CONNECTIONS, {color: '#1f2937', lineWidth: 4});
-                        drawLandmarks(canvasCtx, activeHands[i], {color: '#00f0ff', lineWidth: 1, radius: 3});
+                        // Hand Joints
+                        drawLandmarks(canvasCtx, activeHands[i], {color: '#f8fafc', fillColor: '#1f2937', lineWidth: 2, radius: 4});
+
+                        // Draw Object tracking mesh
+                        drawHeldObjectVolume(canvasCtx, activeHands[i], 'kinematic');
                     }
                 }
             } else {
                 // --- TACTICAL UI MODE ---
                 
-                // 1. Render Faces
                 if (activeFaces.length > 0) {
                     uiStatus.innerText = "SUBJECT LOCKED";
                     uiStatus.className = "text-[#00f0ff] font-bold text-glow";
@@ -582,10 +714,9 @@
                     uiRoll.innerText = "0.00";
                 }
 
-                // 2. Render Hands
                 if (activeHands.length > 0) {
                     uiHands.innerText = `${activeHands.length} DETECTED`;
-                    uiHands.className = "text-[#ff3c00] font-bold"; // Orange text alert
+                    uiHands.className = "text-[#ff3c00] font-bold"; 
 
                     for (let i = 0; i < activeHands.length; i++) {
                         const landmarks = activeHands[i];
@@ -604,13 +735,8 @@
                         const pMaxY = maxY * canvasElement.height;
 
                         const pad = 15;
-                        // Draw Tactical Orange Box around hands
                         drawCyberBox(canvasCtx, pMinX - pad, pMinY - pad, pMaxX + pad, pMaxY + pad, '#ff3c00', `HAND_TRK_${i}`);
-
-                        // Draw the dynamic object shape inside the hand
                         drawHeldObjectVolume(canvasCtx, landmarks, 'tactical');
-
-                        // Draw hand skeleton
                         drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: 'rgba(255, 60, 0, 0.6)', lineWidth: 1.5});
                         drawLandmarks(canvasCtx, landmarks, {color: '#ff3c00', lineWidth: 1, radius: 2});
                     }
@@ -622,7 +748,7 @@
                     uiHands.innerText = "NONE";
                     uiHands.className = "text-gray-500";
                 }
-            } // End of Tactical Else Block
+            } 
 
             canvasCtx.restore();
             requestAnimationFrame(renderLoop);
@@ -633,8 +759,6 @@
             loadingBar.style.width = "20%";
             addLog("BOOTING CORE SYSTEM...");
 
-            // Use MediaPipe Holistic to track both face and hands simultaneously 
-            // This prevents WASM module collisions that occur when using FaceMesh and Hands separately
             const holistic = new Holistic({locateFile: (file) => {
                 return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
             }});
@@ -642,7 +766,7 @@
             holistic.setOptions({
                 modelComplexity: 1, 
                 smoothLandmarks: true, 
-                refineFaceLandmarks: true, // Crucial for getting iris points
+                refineFaceLandmarks: true, 
                 minDetectionConfidence: 0.5,
                 minTrackingConfidence: 0.5
             });
@@ -652,13 +776,10 @@
             loadingBar.style.width = "60%";
             addLog("ALLOCATING CAMERA STREAM...");
 
-            // Start the standalone rendering engine
             renderLoop();
 
-            // Initialize Camera
             const camera = new Camera(videoElement, {
                 onFrame: async () => {
-                    // Send video frame to the unified holistic network
                     await holistic.send({image: videoElement});
                 },
                 width: 1280,
@@ -679,9 +800,8 @@
             }
         }
 
-        // Start when page loads
         window.addEventListener('load', () => {
-            setTimeout(initialize, 1000); // Slight delay for dramatic loading effect
+            setTimeout(initialize, 1000); 
         });
 
     </script>
